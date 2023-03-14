@@ -10,18 +10,23 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
-
     //tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
     ipaddress="127.0.0.1";//192.168.1.11 toto je na niektory realny robot.. na lokal budete davat "127.0.0.1"
   //  cap.open("http://192.168.1.11:8000/stream.mjpg");
     ui->setupUi(this);
-    datacounter=0;
+    datacounter = 0;
   //  timer = new QTimer(this);
 //    connect(timer, SIGNAL(timeout()), this, SLOT(getNewFrame()));
-    actIndex=-1;
-    useCamera1=false;
+    actIndex = -1;
+    useCamera1 = false;
+    f = 681.743;
+    ZD = -145;
+    Z = 210;
+    YD = 115;
+    alpha = 0;
+    datacounter = 0;
 
-    datacounter=0;
+
 }
 
 MainWindow::~MainWindow()
@@ -37,31 +42,55 @@ void MainWindow::paintEvent(QPaintEvent *event)
     painter.setBrush(Qt::black);//cierna farba pozadia(pouziva sa ako fill pre napriklad funkciu drawRect)
     QPen pero;
     pero.setStyle(Qt::SolidLine);//styl pera - plna ciara
-    pero.setWidth(3);//hrubka pera -3pixely
+    pero.setWidth(0);//hrubka pera -3pixely
     pero.setColor(Qt::green);//farba je zelena
     QRect rect;
     rect = ui->frame->geometry();//ziskate porametre stvorca,do ktoreho chcete kreslit
     rect.translate(0,15);
     painter.drawRect(rect);
 
+
     if(useCamera1 == true && actIndex > -1)/// ak zobrazujem data z kamery a aspon niektory frame vo vectore je naplneny
     {
-        //std::cout<<actIndex<<std::endl;
-        QImage image = QImage((uchar*)frame[actIndex].data, frame[actIndex].cols, frame[actIndex].rows, frame[actIndex].step, QImage::Format_RGB888  );//kopirovanie cvmat do qimage
-        painter.drawImage(rect,image.rgbSwapped());
+        QImage image = QImage((uchar*)frame[actIndex].data, frame[actIndex].cols, frame[actIndex].rows, frame[actIndex].step, QImage::Format_RGB888);
+        QPainter paint(&image);
+        if(updateLaserPicture == 1) ///ak mam nove data z lidaru
+        {
+            updateLaserPicture = 0;
+
+            for(int k = 0; k < copyOfLaserData.numberOfScans/*360*/; k++)
+            {
+                D = copyOfLaserData.Data[k].scanDistance;
+                X = D * cos((360.0-copyOfLaserData.Data[k].scanAngle) * PI/180.0);
+                Y = D * sin((360.0-copyOfLaserData.Data[k].scanAngle) * PI/180.0);
+                int xobr = (frame[actIndex].cols/2) - ((f * Y)/(X + ZD));
+                int yobr = (frame[actIndex].rows/2) + ((f * (-Z + YD))/(X + ZD));
+
+                if((360.0-copyOfLaserData.Data[k].scanAngle) <= 32.0 || (360.0-copyOfLaserData.Data[k].scanAngle) >= (360.0-32.0))
+                {
+                    D -= 200;
+                    alpha = (int)(255-(D/16));
+                    paint.fillRect(xobr, yobr-20, 20, 40, QColor(255, 0, 0, alpha));
+                    //std::cout<<D<<std::endl;
+                }
+            }
+            //paint.end();
+        }
+        painter.drawImage(rect, image.rgbSwapped());
+
     }
     else
     {
         if(updateLaserPicture == 1) ///ak mam nove data z lidaru
         {
             updateLaserPicture = 0;
-
+            pero.setColor(Qt::green);
             painter.setPen(pero);
             //teraz tu kreslime random udaje... vykreslite to co treba... t.j. data z lidaru
             //std::cout<<copyOfLaserData.numberOfScans<<std::endl;
             for(int k = 0; k < copyOfLaserData.numberOfScans/*360*/; k++)
             {
-                int dist = copyOfLaserData.Data[k].scanDistance/12; ///vzdialenost nahodne predelena 20 aby to nejako vyzeralo v okne.. zmen podla uvazenia
+                int dist = copyOfLaserData.Data[k].scanDistance/15; ///vzdialenost nahodne predelena 20 aby to nejako vyzeralo v okne.. zmen podla uvazenia
                 int xp = rect.width()-(rect.width()/2+dist*2*sin((360.0-copyOfLaserData.Data[k].scanAngle)*3.14159/180.0))+rect.topLeft().x(); //prepocet do obrazovky
                 int yp = rect.height()-(rect.height()/2+dist*2*cos((360.0-copyOfLaserData.Data[k].scanAngle)*3.14159/180.0))+rect.topLeft().y();//prepocet do obrazovky
                 if(rect.contains(xp,yp))//ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
@@ -123,7 +152,7 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
                 /// okno pocuva vo svojom slote a vasu premennu nastavi tak ako chcete. prikaz emit to presne takto spravi
                 /// viac o signal slotoch tu: https://doc.qt.io/qt-5/signalsandslots.html
         ///posielame sem nezmysli.. pohrajte sa nech sem idu zmysluplne veci
-        emit uiValuesChanged(robotdata.EncoderLeft,11,12);
+        emit uiValuesChanged(0,0,0);
         ///toto neodporucam na nejake komplikovane struktury.signal slot robi kopiu dat. radsej vtedy posielajte
         /// prazdny signal a slot bude vykreslovat strukturu (vtedy ju musite mat samozrejme ako member premmennu v mainwindow.ak u niekoho najdem globalnu premennu,tak bude cistit bludisko zubnou kefkou.. kefku dodam)
         /// vtedy ale odporucam pouzit mutex, aby sa vam nestalo ze budete pocas vypisovania prepisovat niekde inde
@@ -152,9 +181,9 @@ int MainWindow::processThisLidar(LaserMeasurement laserData)
 /// vola sa ked dojdu nove data z kamery
 int MainWindow::processThisCamera(cv::Mat cameraData)
 {
-
+    //(actIndex+1)%3
     cameraData.copyTo(frame[(actIndex+1)%3]);//kopirujem do nasej strukury
-    actIndex=(actIndex+1)%3;//aktualizujem kde je nova fotka
+    actIndex = (actIndex+1)%3;//aktualizujem kde je nova fotka
     updateLaserPicture=1;
     return 0;
 }
@@ -204,7 +233,6 @@ void MainWindow::on_pushButton_9_clicked() //start button
 
 void MainWindow::on_pushButton_2_clicked() //forward
 {
-    //pohyb dopredu
     robot.setTranslationSpeed(500);
 
 }

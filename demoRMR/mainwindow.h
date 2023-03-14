@@ -19,6 +19,7 @@
 //#include "rplidar.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/core/utility.hpp"
@@ -27,6 +28,7 @@
 #include "robot.h"
 
 #include <QJoysticks.h>
+
 namespace Ui {
 class MainWindow;
 }
@@ -85,11 +87,22 @@ private:
      skeleton skeleJoints;
      int datacounter;
      QTimer *timer;
+     cv::Mat img_rect;
+
+
+     float D;
+     float f;
+     float Y;
+     float X;
+     int ZD;
+     int Z;
+     int YD;
 
      QJoysticks *instance;
 
      double forwardspeed;//mm/s
      double rotationspeed;//omega/s
+     int alpha;
 public slots:
      void setUiValues(double robotX,double robotY,double robotFi);
 signals:
