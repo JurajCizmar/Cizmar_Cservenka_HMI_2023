@@ -73,6 +73,10 @@ private slots:
 
     void getNewFrame();
 
+    void ramp();
+
+    void draw_robot_arc(QPainter *painter, QPen *pen, QRect *rect, double startAngle, double arcLength, int emergency);
+
 private:
 
     //--skuste tu nic nevymazat... pridavajte co chcete, ale pri odoberani by sa mohol stat nejaky drobny problem, co bude vyhadzovat chyby
@@ -89,20 +93,26 @@ private:
      QTimer *timer;
      cv::Mat img_rect;
 
+     int maxSpeed = 300;
+     int increment = 5;
+     int actualSpeed = 0;
+
 
      float D;
      float f;
      float Y;
      float X;
-     int ZD;
-     int Z;
-     int YD;
+     float ZD;
+     float Z;
+     float YD;
+     double scanAngle;
 
      QJoysticks *instance;
 
      double forwardspeed;//mm/s
      double rotationspeed;//omega/s
      int alpha;
+     int max, mid, min;
 public slots:
      void setUiValues(double robotX,double robotY,double robotFi);
 signals:

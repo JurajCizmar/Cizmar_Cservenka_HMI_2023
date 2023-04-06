@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     //tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
-    ipaddress="127.0.0.1";//192.168.1.11 toto je na niektory realny robot.. na lokal budete davat "127.0.0.1"
+    ipaddress = "127.0.0.1";//192.168.1.11 toto je na niektory realny robot.. na lokal budete davat "127.0.0.1"
   //  cap.open("http://192.168.1.11:8000/stream.mjpg");
     ui->setupUi(this);
     datacounter = 0;
@@ -25,8 +25,9 @@ MainWindow::MainWindow(QWidget *parent) :
     YD = 115;
     alpha = 0;
     datacounter = 0;
-
-
+    max = 600;
+    mid = 400;
+    min = 200;
 }
 
 MainWindow::~MainWindow()
@@ -41,6 +42,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
     /// moze pochopitelne zavolat aj z inych dovodov, napriklad zmena velkosti okna
     painter.setBrush(Qt::black);//cierna farba pozadia(pouziva sa ako fill pre napriklad funkciu drawRect)
     QPen pero;
+    QPen pen;
     pero.setStyle(Qt::SolidLine);//styl pera - plna ciara
     pero.setWidth(0);//hrubka pera -3pixely
     pero.setColor(Qt::green);//farba je zelena
@@ -53,7 +55,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
     if(useCamera1 == true && actIndex > -1)/// ak zobrazujem data z kamery a aspon niektory frame vo vectore je naplneny
     {
         QImage image = QImage((uchar*)frame[actIndex].data, frame[actIndex].cols, frame[actIndex].rows, frame[actIndex].step, QImage::Format_RGB888);
-        QPainter paint(&image);
+        QPainter image_painter(&image);
         if(updateLaserPicture == 1) ///ak mam nove data z lidaru
         {
             updateLaserPicture = 0;
@@ -61,22 +63,135 @@ void MainWindow::paintEvent(QPaintEvent *event)
             for(int k = 0; k < copyOfLaserData.numberOfScans/*360*/; k++)
             {
                 D = copyOfLaserData.Data[k].scanDistance;
-                X = D * cos((360.0-copyOfLaserData.Data[k].scanAngle) * PI/180.0);
-                Y = D * sin((360.0-copyOfLaserData.Data[k].scanAngle) * PI/180.0);
-                int xobr = (frame[actIndex].cols/2) - ((f * Y)/(X + ZD));
-                int yobr = (frame[actIndex].rows/2) + ((f * (-Z + YD))/(X + ZD));
+                scanAngle = 360.0-copyOfLaserData.Data[k].scanAngle;
 
-                if((360.0-copyOfLaserData.Data[k].scanAngle) <= 32.0 || (360.0-copyOfLaserData.Data[k].scanAngle) >= (360.0-32.0))
+                X = D * cos(scanAngle * PI/180.0);
+                Y = D * sin(scanAngle * PI/180.0);
+                float xobr = (frame[actIndex].cols/2.0) - ((f * Y)/(X + ZD));
+                float yobr = (frame[actIndex].rows/2.0) + ((f * (-Z + YD))/(X + ZD));
+
+                D -= 200; //200 pre simulator, 150 pre realny
+
+                if(scanAngle <= 32.0 || scanAngle >= (360.0-32.0))
                 {
-                    D -= 200;
-                    alpha = (int)(255-(D/16));
-                    paint.fillRect(xobr, yobr-20, 20, 40, QColor(255, 0, 0, alpha));
-                    //std::cout<<D<<std::endl;
+                    alpha = int((255-(D/16)));
+                    image_painter.fillRect((int)xobr-10, (int)yobr-20, 20, 40, QColor(0, 50, 255 , alpha));
                 }
             }
-            //paint.end();
         }
+
+        painter.setBrush(Qt::black);
+        pen.setStyle(Qt::SolidLine);
+        pen.setWidth(6);
+        pen.setBrush(Qt::red);
+        painter.setPen(pen);
         painter.drawImage(rect, image.rgbSwapped());
+        painter.drawEllipse(rect.bottomRight().x()/2 -21, rect.bottomRight().y()-96, 42, 42);
+        painter.fillRect(rect.bottomRight().x()/2-3, rect.bottomRight().y()-96, 6, 20, Qt::red);
+        pen.setWidth(6);
+
+        for(int k = 0; k < copyOfLaserData.numberOfScans/*360*/; k++){
+            D = copyOfLaserData.Data[k].scanDistance;
+            D -= 150;
+            scanAngle = 360.0-copyOfLaserData.Data[k].scanAngle;
+
+            if (scanAngle > 22.5 && scanAngle <= 67.5){
+
+                if (D <= max && D > mid){
+                    draw_robot_arc(&painter, &pen, &rect, 120, 30, 1);
+
+                } else if(D <= mid && D > min){
+                    draw_robot_arc(&painter, &pen, &rect, 120, 30, 2);
+
+                } else if(D <= min && D >= 50){
+                    draw_robot_arc(&painter, &pen, &rect, 120, 30, 3);
+                }
+
+            } else if (scanAngle > 67.5 && scanAngle <= 112.5){
+
+                if (D <= max && D > mid){
+                    draw_robot_arc(&painter, &pen, &rect, 165, 30, 1);
+
+                } else if(D <= mid && D > min){
+                    draw_robot_arc(&painter, &pen, &rect, 165, 30, 2);
+
+                } else if(D <= min && D >= 50){
+                    draw_robot_arc(&painter, &pen, &rect, 165, 30, 3);
+                }
+
+            } else if (scanAngle > 112.5 && scanAngle <= 157.5){
+
+                if (D <= max && D > mid){
+                    draw_robot_arc(&painter, &pen, &rect, 210, 30, 1);
+
+                } else if(D <= mid && D > min){
+                    draw_robot_arc(&painter, &pen, &rect, 210, 30, 2);
+
+                } else if(D <= min && D >= 50){
+                    draw_robot_arc(&painter, &pen, &rect, 210, 30, 3);
+                }
+
+            } else if (scanAngle > 157.5 && scanAngle <= 202.5){
+
+                if (D <= max && D > mid){
+                    draw_robot_arc(&painter, &pen, &rect, 255, 30, 1);
+
+                } else if(D <= mid && D > min){
+                    draw_robot_arc(&painter, &pen, &rect, 255, 30, 2);
+
+                } else if(D <= min && D >= 50){
+                    draw_robot_arc(&painter, &pen, &rect, 255, 30, 3);
+                }
+
+            } else if (scanAngle > 202.5 && scanAngle <= 247.5){
+
+                if (D <= max && D > mid){
+                    draw_robot_arc(&painter, &pen, &rect, 300, 30, 1);
+
+                } else if(D <= mid && D > min){
+                    draw_robot_arc(&painter, &pen, &rect, 300, 30, 2);
+
+                } else if(D <= min && D >= 50){
+                    draw_robot_arc(&painter, &pen, &rect, 300, 30, 3);
+                }
+
+            } else if (scanAngle > 247.5 && scanAngle <= 292.5){
+
+                if (D <= max && D > mid){
+                    draw_robot_arc(&painter, &pen, &rect, 345, 30, 1);
+
+                } else if(D <= mid && D > min){
+                    draw_robot_arc(&painter, &pen, &rect, 345, 30, 2);
+
+                } else if(D <= min && D >= 50){
+                    draw_robot_arc(&painter, &pen, &rect, 345, 30, 3);
+                }
+
+            } else if (scanAngle > 292.5 && scanAngle <= 337.5){
+
+                if (D <= max && D > mid){
+                    draw_robot_arc(&painter, &pen, &rect, 30, 30, 1);
+
+                } else if(D <= mid && D > min){
+                    draw_robot_arc(&painter, &pen, &rect, 30, 30, 2);
+
+                } else if(D <= min && D >= 50){
+                    draw_robot_arc(&painter, &pen, &rect, 30, 30, 3);
+                }
+
+            } else {
+
+                if (D <= max && D > mid){
+                    draw_robot_arc(&painter, &pen, &rect, 75, 30, 1);
+
+                } else if(D <= mid && D > min){
+                    draw_robot_arc(&painter, &pen, &rect, 75, 30, 2);
+
+                } else if(D <= min && D >= 50){
+                    draw_robot_arc(&painter, &pen, &rect, 75, 30, 3);
+                }
+            }
+        }
 
     }
     else
@@ -126,6 +241,13 @@ void  MainWindow::setUiValues(double robotX, double robotY, double robotFi)
 int MainWindow::processThisRobot(TKobukiData robotdata)
 {
 
+    if (actualSpeed > 0 && actualSpeed < 300){
+        actualSpeed += increment;
+        robot.setTranslationSpeed(actualSpeed);
+    }
+    if(actualSpeed >= 300){
+        robot.setTranslationSpeed(maxSpeed);
+    }
     ///tu mozete robit s datami z robota
     /// ale nic vypoctovo narocne - to iste vlakno ktore cita data z robota
     ///teraz tu posielam rychlosti na zaklade toho co setne joystick a vypisujeme data z robota(kazdy 5ty krat. ale mozete skusit aj castejsie). vyratajte si polohu. a vypiste spravnu
@@ -181,7 +303,6 @@ int MainWindow::processThisLidar(LaserMeasurement laserData)
 /// vola sa ked dojdu nove data z kamery
 int MainWindow::processThisCamera(cv::Mat cameraData)
 {
-    //(actIndex+1)%3
     cameraData.copyTo(frame[(actIndex+1)%3]);//kopirujem do nasej strukury
     actIndex = (actIndex+1)%3;//aktualizujem kde je nova fotka
     updateLaserPicture=1;
@@ -233,7 +354,7 @@ void MainWindow::on_pushButton_9_clicked() //start button
 
 void MainWindow::on_pushButton_2_clicked() //forward
 {
-    robot.setTranslationSpeed(500);
+    MainWindow::ramp();
 
 }
 
@@ -245,19 +366,20 @@ void MainWindow::on_pushButton_3_clicked() //back
 
 void MainWindow::on_pushButton_6_clicked() //left
 {
-robot.setRotationSpeed(3.14159/2);
+    robot.setRotationSpeed(3.14159/2);
 
 }
 
 void MainWindow::on_pushButton_5_clicked()//right
 {
-robot.setRotationSpeed(-3.14159/2);
+    robot.setRotationSpeed(-3.14159/2);
 
 }
 
 void MainWindow::on_pushButton_4_clicked() //stop
 {
     robot.setTranslationSpeed(0);
+    actualSpeed = 0;
 
 }
 
@@ -284,3 +406,42 @@ void MainWindow::getNewFrame()
 {
 
 }
+
+void MainWindow::ramp(){
+    if (actualSpeed < maxSpeed){
+        actualSpeed += increment;
+        robot.setTranslationSpeed(actualSpeed);
+    }
+    else{
+        robot.setTranslationSpeed(maxSpeed);
+    }
+}
+
+void MainWindow::draw_robot_arc(QPainter *painter, QPen *pen, QRect *rect, double startAngle, double arcLength, int emergency){
+
+    if (emergency == 1){
+        pen->setBrush(QColor(255, 255, 0));
+        painter->setPen(*pen);
+        painter->drawArc(rect->bottomRight().x()/2-35, rect->bottomRight().y()-110, 70, 70, startAngle*16, arcLength*16);
+
+    } else if (emergency == 2){
+        pen->setBrush(QColor(255, 255, 0));
+        painter->setPen(*pen);
+        painter->drawArc(rect->bottomRight().x()/2-35, rect->bottomRight().y()-110, 70, 70, startAngle*16, arcLength*16);
+        pen->setBrush(QColor(255, 165, 0));
+        painter->setPen(*pen);
+        painter->drawArc(rect->bottomRight().x()/2-50, rect->bottomRight().y()-125, 100, 100, startAngle*16, arcLength*16);
+
+    } else if (emergency == 3){
+        pen->setBrush(QColor(255, 255, 0));
+        painter->setPen(*pen);
+        painter->drawArc(rect->bottomRight().x()/2-35, rect->bottomRight().y()-110, 70, 70, startAngle*16, arcLength*16);
+        pen->setBrush(QColor(255, 165, 0));
+        painter->setPen(*pen);
+        painter->drawArc(rect->bottomRight().x()/2-50, rect->bottomRight().y()-125, 100, 100, startAngle*16, arcLength*16);
+        pen->setBrush(QColor(255, 0, 0));
+        painter->setPen(*pen);
+        painter->drawArc(rect->bottomRight().x()/2-65, rect->bottomRight().y()-140, 130, 130, startAngle*16, arcLength*16);
+    }
+}
+
