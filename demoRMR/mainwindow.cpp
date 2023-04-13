@@ -27,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent) :
     datacounter = 0;
     max = 600;
     mid = 400;
-    min = 200;
+    min = 200; 
 }
 
 MainWindow::~MainWindow()
@@ -43,13 +43,20 @@ void MainWindow::paintEvent(QPaintEvent *event)
     painter.setBrush(Qt::black);//cierna farba pozadia(pouziva sa ako fill pre napriklad funkciu drawRect)
     QPen pero;
     QPen pen;
-    pero.setStyle(Qt::SolidLine);//styl pera - plna ciara
-    pero.setWidth(0);//hrubka pera -3pixely
+    //pero.setStyle(Qt::SolidLine);//styl pera - plna ciara
+    //pero.setWidth(0);//hrubka pera -3pixely
     pero.setColor(Qt::green);//farba je zelena
     QRect rect;
     rect = ui->frame->geometry();//ziskate porametre stvorca,do ktoreho chcete kreslit
     rect.translate(0,15);
+    minimapSize = int(rect.bottomRight().x()/4);
+    QRect miniMap(0, 0, minimapSize, minimapSize);
+    miniMap.translate(rect.bottomRight().x()-(minimapSize+1), rect.bottomRight().y()-(minimapSize+1));
     painter.drawRect(rect);
+    QFont font = painter.font();
+    font.setPixelSize(70);
+    painter.setFont(font);
+
 
 
     if(useCamera1 == true && actIndex > -1)/// ak zobrazujem data z kamery a aspon niektory frame vo vectore je naplneny
@@ -80,15 +87,39 @@ void MainWindow::paintEvent(QPaintEvent *event)
             }
         }
 
-        painter.setBrush(Qt::black);
+
+        painter.drawImage(rect, image.rgbSwapped());
+        painter.setBrush(QColor(192, 192, 192, 127));
+        painter.drawRect(miniMap);
+
+        painter.setBrush(Qt::transparent);
         pen.setStyle(Qt::SolidLine);
         pen.setWidth(6);
         pen.setBrush(Qt::red);
         painter.setPen(pen);
-        painter.drawImage(rect, image.rgbSwapped());
+        painter.drawEllipse(QPoint(miniMap.bottomRight().x()-(minimapSize/2), miniMap.bottomRight().y()-(minimapSize/2)), 2, 2);
+
         painter.drawEllipse(rect.bottomRight().x()/2 -21, rect.bottomRight().y()-96, 42, 42);
         painter.fillRect(rect.bottomRight().x()/2-3, rect.bottomRight().y()-96, 6, 20, Qt::red);
+
+
+        pen.setBrush(Qt::blue);
+        pen.setWidth(3);
+        painter.setPen(pen);
+
+
+        for(int k = 0; k < copyOfLaserData.numberOfScans/*360*/; k++)
+        {
+            int dist = copyOfLaserData.Data[k].scanDistance/50; ///vzdialenost nahodne predelena 20 aby to nejako vyzeralo v okne.. zmen podla uvazenia
+            int xp = miniMap.width()-(miniMap.width()/2+dist*2*sin((360.0-copyOfLaserData.Data[k].scanAngle)*3.14159/180.0)) + miniMap.topLeft().x(); //prepocet do obrazovky
+            int yp = miniMap.height()-(miniMap.height()/2+dist*2*cos((360.0-copyOfLaserData.Data[k].scanAngle)*3.14159/180.0))+miniMap.topLeft().y();//prepocet do obrazovky
+            if(miniMap.contains(xp,yp)){//ak je bod vo vnutri nasho obdlznika tak iba vtedy budem chciet kreslit
+                painter.drawEllipse(QPoint(xp, yp),2,2);
+            }
+        }
+
         pen.setWidth(6);
+        painter.setPen(pen);
 
         for(int k = 0; k < copyOfLaserData.numberOfScans/*360*/; k++){
             D = copyOfLaserData.Data[k].scanDistance;
@@ -240,26 +271,10 @@ void  MainWindow::setUiValues(double robotX, double robotY, double robotFi)
 /// vola sa vzdy ked dojdu nove data z robota. nemusite nic riesit, proste sa to stane
 int MainWindow::processThisRobot(TKobukiData robotdata)
 {
-
-    if (actualSpeed > 0 && actualSpeed < 300){
-        actualSpeed += increment;
-        robot.setTranslationSpeed(actualSpeed);
-    }
-    if(actualSpeed >= 300){
-        robot.setTranslationSpeed(maxSpeed);
-    }
     ///tu mozete robit s datami z robota
     /// ale nic vypoctovo narocne - to iste vlakno ktore cita data z robota
     ///teraz tu posielam rychlosti na zaklade toho co setne joystick a vypisujeme data z robota(kazdy 5ty krat. ale mozete skusit aj castejsie). vyratajte si polohu. a vypiste spravnu
     /// tuto joystick cast mozete vklude vymazat,alebo znasilnit na vas regulator alebo ake mate pohnutky... kazdopadne, aktualne to blokuje gombiky cize tak
-//    if(forwardspeed==0 && rotationspeed!=0)
-//        robot.setRotationSpeed(rotationspeed);
-//    else if(forwardspeed!=0 && rotationspeed==0)
-//        robot.setTranslationSpeed(forwardspeed);
-//    else if((forwardspeed!=0 && rotationspeed!=0))
-//        robot.setArcSpeed(forwardspeed,forwardspeed/rotationspeed);
-//    else
-//        robot.setTranslationSpeed(0);
 
 ///TU PISTE KOD... TOTO JE TO MIESTO KED NEVIETE KDE ZACAT,TAK JE TO NAOZAJ TU. AK AJ TAK NEVIETE, SPYTAJTE SA CVICIACEHO MA TU NATO STRING KTORY DA DO HLADANIA XXX
 
@@ -282,6 +297,7 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
     }
     datacounter++;
 
+    if (rampa) MainWindow::ramp();
     return 0;
 
 }
@@ -354,7 +370,7 @@ void MainWindow::on_pushButton_9_clicked() //start button
 
 void MainWindow::on_pushButton_2_clicked() //forward
 {
-    MainWindow::ramp();
+    rampa = true;
 
 }
 
@@ -379,11 +395,10 @@ void MainWindow::on_pushButton_5_clicked()//right
 void MainWindow::on_pushButton_4_clicked() //stop
 {
     robot.setTranslationSpeed(0);
+    rampa = false;
     actualSpeed = 0;
 
 }
-
-
 
 
 void MainWindow::on_pushButton_clicked()
@@ -433,6 +448,7 @@ void MainWindow::draw_robot_arc(QPainter *painter, QPen *pen, QRect *rect, doubl
         painter->drawArc(rect->bottomRight().x()/2-50, rect->bottomRight().y()-125, 100, 100, startAngle*16, arcLength*16);
 
     } else if (emergency == 3){
+
         pen->setBrush(QColor(255, 255, 0));
         painter->setPen(*pen);
         painter->drawArc(rect->bottomRight().x()/2-35, rect->bottomRight().y()-110, 70, 70, startAngle*16, arcLength*16);
@@ -442,6 +458,11 @@ void MainWindow::draw_robot_arc(QPainter *painter, QPen *pen, QRect *rect, doubl
         pen->setBrush(QColor(255, 0, 0));
         painter->setPen(*pen);
         painter->drawArc(rect->bottomRight().x()/2-65, rect->bottomRight().y()-140, 130, 130, startAngle*16, arcLength*16);
+
+        painter->fillRect(rect->topLeft().x()+100, rect->topLeft().y()+100, rect->bottomRight().x()-200, rect->bottomRight().y()-300, QColor(192, 192, 192, 7));
+
+        const QRect rectangle = QRect((rect->bottomRight().x()/2)-(rect->bottomRight().x()/6), (rect->bottomRight().y()/2), rect->bottomRight().x()-200, rect->bottomRight().y()-300);
+        QRect boundingRect;
+        painter->drawText(rectangle, 0, alarmString, &boundingRect);
     }
 }
-

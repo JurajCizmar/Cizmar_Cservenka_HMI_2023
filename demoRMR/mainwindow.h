@@ -28,6 +28,7 @@
 #include "robot.h"
 
 #include <QJoysticks.h>
+#include <QString>
 
 namespace Ui {
 class MainWindow;
@@ -97,6 +98,9 @@ private:
      int increment = 5;
      int actualSpeed = 0;
 
+     bool rampa = false;
+     int minimapSize;
+
 
      float D;
      float f;
@@ -108,11 +112,13 @@ private:
      double scanAngle;
 
      QJoysticks *instance;
+     QString alarmString = "  Pozor\nPrekazka";
 
      double forwardspeed;//mm/s
      double rotationspeed;//omega/s
      int alpha;
      int max, mid, min;
+
 public slots:
      void setUiValues(double robotX,double robotY,double robotFi);
 signals:
