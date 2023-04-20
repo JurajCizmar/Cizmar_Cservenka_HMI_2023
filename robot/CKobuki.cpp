@@ -6,7 +6,7 @@
 
 
 
-///niektore funkcie maju zakomentovane tela..
+/// niektore funkcie maju zakomentovane tela..
 /// je to preto ze povodna trieda je na priamu komunikaciu s robotom
 /// (ano, toto zial bezi na robote. sklamanie,ze?)
 /// vy ale pracujete s udp verziou, ktora pouziva CKobuki len kvoli niektorym pomocnym funkciam
@@ -133,9 +133,9 @@ std::vector<unsigned char> CKobuki::setArcSpeed(int mmpersec, int radius)
     std::vector<unsigned char> vystup(message,message+sizeof(message)/sizeof(message[0]));
         return vystup;
 }
-///2 body navyse prvej skupine ktora pomocou tejto funkcie zahra melodiu pink panther (staci 5 sekund)
+/// 2 body navyse prvej skupine ktora pomocou tejto funkcie zahra melodiu pink panther (staci 5 sekund)
 /// druha skupina co chce 2 body musi zahrat uvod zo smooth criminal
-/// neuverite, 2body moze ziskat aj tretia skupina.. jedine co preto musi spravit je zahrat na robote Bohemian Rhapsody (kompletnu pesnicku.aj s vokalmi)
+/// neuverite, 2 body moze ziskat aj tretia skupina.. jedine co preto musi spravit je zahrat na robote Bohemian Rhapsody (kompletnu pesnicku.aj s vokalmi)
 std::vector<unsigned char> CKobuki::setSound(int noteinHz, int duration)
 {
     int notevalue =(int) floor((double)1.0 / ((double)noteinHz*0.00000275) + 0.5);
