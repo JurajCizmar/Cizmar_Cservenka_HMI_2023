@@ -7,16 +7,11 @@
 #include<windows.h>
 #endif
 #include<iostream>
-//#include<arpa/inet.h>
-//#include<unistd.h>
-//#include<sys/socket.h>
 #include<sys/types.h>
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
 #include<vector>
-//#include "ckobuki.h"
-//#include "rplidar.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
@@ -41,10 +36,9 @@ class MainWindow : public QMainWindow
 
 public:
     bool useCamera1;
-  //  cv::VideoCapture cap;
+    bool useStopSwitch;
 
     int actIndex;
-    //    cv::Mat frame[3];
 
     cv::Mat frame[3];
     explicit MainWindow(QWidget *parent = 0);
@@ -54,27 +48,22 @@ public:
 
     int processThisRobot(TKobukiData robotdata);
 
-int processThisCamera(cv::Mat cameraData);
-int processThisSkeleton(skeleton skeledata);
+    int processThisCamera(cv::Mat cameraData);
+
+    int processThisSkeleton(skeleton skeledata);
 
 private slots:
     void on_pushButton_9_clicked();
 
-    void on_pushButton_2_clicked();
-
-    void on_pushButton_3_clicked();
-
-    void on_pushButton_6_clicked();
-
-    void on_pushButton_5_clicked();
-
     void on_pushButton_4_clicked();
-
-    void on_pushButton_clicked();
 
     void getNewFrame();
 
+    void skeletonTracker();
+
     void ramp();
+
+    void rampBack();
 
     void draw_robot_arc(QPainter *painter, QPen *pen, QRect *rect, double startAngle, double arcLength, int emergency);
 
@@ -95,12 +84,12 @@ private:
      cv::Mat img_rect;
 
      int maxSpeed = 300;
+     int maxSpeedBack = -100;
      int increment = 5;
      int actualSpeed = 0;
 
      bool rampa = false;
      int minimapSize;
-
 
      float D;
      float f;
@@ -112,12 +101,43 @@ private:
      double scanAngle;
 
      QJoysticks *instance;
-     QString alarmString = "  Pozor\nPrekazka";
+     QString alarmString = "Warning";
 
      double forwardspeed;//mm/s
      double rotationspeed;//omega/s
      int alpha;
      int max, mid, min;
+
+     float rectHeight;
+     float rectWidth;
+     float frameHeight;
+     float frameWidth;
+
+     float diffHeight;
+     float diffWidth;
+
+     float rightIndexTipX;
+     float rightIndexTipY;
+     float leftIndexTipX;
+     float leftIndexTipY;
+     float rightWristY;
+     float rightWristX;
+     float leftWristX;
+     float leftWristY;
+     float rightMiddleTipX;
+     float rightMiddleTipY;
+     float leftMiddleTipX;
+     float leftMiddleTipY;
+     float rightPinkyTipX;
+     float rightPinkyTipY;
+     float rightPalmZ;
+     float leftPalmZ;
+
+     float rightIndexDistance;
+     float leftIndexDistance;
+     float rightMiddleDistance;
+     float leftMiddleDistance;
+     float rightPinkyDistance;
 
 public slots:
      void setUiValues(double robotX,double robotY,double robotFi);
