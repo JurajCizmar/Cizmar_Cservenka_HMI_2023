@@ -37,7 +37,7 @@ Robot::Robot(std::string ipaddressLaser,int laserportRobot, int laserportMe,std:
     readyFuture=ready_promise.get_future();
 }
 
-/// tato funkcia vas nemusi zaujimat
+///tato funkcia vas nemusi zaujimat
 /// toto je funkcia s nekonecnou sluckou,ktora cita data z robota (UDP komunikacia)
 void Robot::robotprocess()
 {
