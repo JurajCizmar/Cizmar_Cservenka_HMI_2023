@@ -19,7 +19,6 @@
 //#include "rplidar.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <opencv2/core/core.hpp>
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/core/utility.hpp"
@@ -28,8 +27,6 @@
 #include "robot.h"
 
 #include <QJoysticks.h>
-#include <QString>
-
 namespace Ui {
 class MainWindow;
 }
@@ -41,10 +38,11 @@ class MainWindow : public QMainWindow
 
 public:
     bool useCamera1;
-  //  cv::VideoCapture cap;
+    bool useStopSwitch;
+    //  cv::VideoCapture cap;
 
     int actIndex;
-    //    cv::Mat frame[3];
+    //   cv::Mat frame[3];
 
     cv::Mat frame[3];
     explicit MainWindow(QWidget *parent = 0);
@@ -54,29 +52,24 @@ public:
 
     int processThisRobot(TKobukiData robotdata);
 
-int processThisCamera(cv::Mat cameraData);
-int processThisSkeleton(skeleton skeledata);
+    int processThisCamera(cv::Mat cameraData);
+
+    int processThisSkeleton(skeleton skeledata);
 
 private slots:
     void on_pushButton_9_clicked();
 
-    void on_pushButton_2_clicked();
-
-    void on_pushButton_3_clicked();
-
-    void on_pushButton_6_clicked();
-
-    void on_pushButton_5_clicked();
-
     void on_pushButton_4_clicked();
-
-    void on_pushButton_clicked();
 
     void getNewFrame();
 
+    void skeletonTracker();
+
     void ramp();
 
-    void draw_robot_arc(QPainter *painter, QPen *pen, QRect *rect, double startAngle, double arcLength, int emergency);
+    void rampBack();
+
+
 
 private:
 
@@ -92,33 +85,48 @@ private:
      skeleton skeleJoints;
      int datacounter;
      QTimer *timer;
-     cv::Mat img_rect;
+
+     float rectHeight;
+     float rectWidth;
+     float frameHeight;
+     float frameWidth;
+
+     float diffHeight;
+     float diffWidth;
+
+     float rightIndexTipX;
+     float rightIndexTipY;
+     float leftIndexTipX;
+     float leftIndexTipY;
+     float rightWristY;
+     float rightWristX;
+     float leftWristX;
+     float leftWristY;
+     float rightMiddleTipX;
+     float rightMiddleTipY;
+     float leftMiddleTipX;
+     float leftMiddleTipY;
+     float rightPinkyTipX;
+     float rightPinkyTipY;
+     float rightPalmZ;
+     float leftPalmZ;
+
+
+     float rightIndexDistance;
+     float leftIndexDistance;
+     float rightMiddleDistance;
+     float leftMiddleDistance;
+     float rightPinkyDistance;
 
      int maxSpeed = 300;
+     int maxSpeedBack = -300;
      int increment = 5;
      int actualSpeed = 0;
 
-     bool rampa = false;
-     int minimapSize;
-
-
-     float D;
-     float f;
-     float Y;
-     float X;
-     float ZD;
-     float Z;
-     float YD;
-     double scanAngle;
-
      QJoysticks *instance;
-     QString alarmString = "  Pozor\nPrekazka";
 
      double forwardspeed;//mm/s
      double rotationspeed;//omega/s
-     int alpha;
-     int max, mid, min;
-
 public slots:
      void setUiValues(double robotX,double robotY,double robotFi);
 signals:
