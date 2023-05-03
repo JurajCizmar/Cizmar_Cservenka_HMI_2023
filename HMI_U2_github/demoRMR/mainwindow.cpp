@@ -94,7 +94,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
                     painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(255, 0, 0, 127));
 
                 } else if(finalMap[i][j] == 4){
-                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(255, 0, 0, 127));
+                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(255, 255, 255, 127));
 
                 }
             }
@@ -192,36 +192,32 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 
         MainWindow::getIndex();
 
-//        if(rect.contains(clickedPos.x(),clickedPos.y())){
+        if(rect.contains(clickedPos.x(),clickedPos.y())){
 //            std::cout << "clicked: " << mouseMapPoint.x() << " " << mouseMapPoint.y() << std::endl;
-//            std::cout << "array index: " << x << " " << y << std::endl;
-//        }
+            std::cout << "array index: " << x << " " << y << std::endl;
+        }
         if(rect.contains(clickedPos.x(),clickedPos.y()) && prechodovyBod && finalMap[y][x] == 0){
             finalMap[y][x] = 3;
-            bod.push_back((x-5)/10.0);
-            bod.push_back((41-y)/10.0);
+            body.push_back((x-5)/10.0);
+            body.push_back((41-y)/10.0);
 //            std::cout << " pushback: " << (x-5)/10.0 << " " << (41-y)/10.0 << std::endl;
             std::cout << " ~~~~~~~~~~ AKTIVNY PRECHODOVY BOD ~~~~~~~~~~ " << std::endl;
 
         } else if(rect.contains(clickedPos.x(),clickedPos.y()) && misiaBod && finalMap[y][x] == 0){
             finalMap[y][x] = 4;
-            bod.push_back((x-5)/10.0);
-            bod.push_back((41-y)/10.0);
+            MainWindow::expandMapWithValue(4);
+
+            body.push_back((x-5)/10.0);
+            body.push_back((41-y)/10.0);
             std::cout << " ~~~~~~~~~~ AKTIVNY BOD MISIE ~~~~~~~~~~ " << std::endl;
 //            std::cout << " pushback: " << (x-5)/10.0 << " " << (41-y)/10.0 << std::endl;
 
         } else if(rect.contains(clickedPos.x(),clickedPos.y()) && cielovyBod && finalMap[y][x] == 0){
             finalMap[y][x] = 5;
-            if (finalMap[y+1][x] == 0)      finalMap[y+1][x] = 5;
-            if (finalMap[y-1][x] == 0)      finalMap[y-1][x] = 5;
-            if (finalMap[y][x+1] == 0)      finalMap[y][x+1] = 5;
-            if (finalMap[y][x-1] == 0)      finalMap[y][x-1] = 5;
-            if (finalMap[y-1][x-1] == 0)    finalMap[y-1][x-1] = 5;
-            if (finalMap[y+1][x+1] == 0)    finalMap[y+1][x+1] = 5;
-            if (finalMap[y-1][x+1] == 0)    finalMap[y-1][x+1] = 5;
-            if (finalMap[y+1][x-1] == 0)    finalMap[y+1][x-1] = 5;
-            bod.push_back((x-5)/10.0);
-            bod.push_back((41-y)/10.0);
+            MainWindow::expandMapWithValue(5);
+
+            body.push_back((x-5)/10.0);
+            body.push_back((41-y)/10.0);
             std::cout << " ~~~~~~~~~~ AKTIVNY CIELOVY BOD ~~~~~~~~~~ " << std::endl;
 //            std::cout << " pushback: " << (x-5)/10.0 << " " << (41-y)/10.0 << std::endl;
         }
@@ -238,10 +234,21 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 
 void MainWindow::advance_to_next_point()
 {
+    bodX = body.at(counter);
+    bodY = body.at(counter+1);
+    counter += 2;
+}
 
-    bodX = bod.at(counter*2);
-    bodY = bod.at((counter*2)+1);
-    counter++;
+void MainWindow::expandMapWithValue(int value)
+{
+    if (finalMap[y+1][x] == 0)      finalMap[y+1][x] = value;
+    if (finalMap[y-1][x] == 0)      finalMap[y-1][x] = value;
+    if (finalMap[y][x+1] == 0)      finalMap[y][x+1] = value;
+    if (finalMap[y][x-1] == 0)      finalMap[y][x-1] = value;
+    if (finalMap[y-1][x-1] == 0)    finalMap[y-1][x-1] = value;
+    if (finalMap[y+1][x+1] == 0)    finalMap[y+1][x+1] = value;
+    if (finalMap[y-1][x+1] == 0)    finalMap[y-1][x+1] = value;
+    if (finalMap[y+1][x-1] == 0)    finalMap[y+1][x-1] = value;
 }
 
 void MainWindow::regulation()
@@ -264,7 +271,7 @@ void MainWindow::regulation()
         angle_error -= 360;
     }
 
-    rot = Pangle * (angle_error * M_PI/180);
+    double rot = Pangle * (angle_error * M_PI/180);
 
     if (rot > M_PI/2){
         rot = M_PI/2;
@@ -285,19 +292,19 @@ void MainWindow::regulation()
 
     } else if (angle_error < -8 && distance_error >= 0.02){
 
-        MainWindow::setRotation();
+        MainWindow::setRotation(rot);
 
     } else if (angle_error > 8 && distance_error >= 0.02){
 
-        MainWindow::setRotation();
+        MainWindow::setRotation(rot);
 
     } else if (angle_error <= 8 && angle_error >= 4){
 
-        MainWindow::setRotation();
+        MainWindow::setRotation(rot);
 
     } else if (angle_error >= -8 && angle_error <= -4){
 
-        MainWindow::setRotation();
+        MainWindow::setRotation(rot);
 
     } else if(distance_error >= 0.02){
 
@@ -306,14 +313,13 @@ void MainWindow::regulation()
     } else if(distance_error < 0.02){
 
         MainWindow::advance_to_next_point();
-
     }
 }
 
-void MainWindow::setRotation()
+void MainWindow::setRotation(double rotation)
 {
     actualSpeed = 0;
-    robot.setRotationSpeed(rot);
+    robot.setRotationSpeed(rotation);
 }
 
 void MainWindow::ramp()

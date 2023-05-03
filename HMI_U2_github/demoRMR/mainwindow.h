@@ -92,7 +92,9 @@ private slots:
 
     void advance_to_next_point();
 
-    void setRotation();
+    void setRotation(double rotation);
+
+    void expandMapWithValue(int value);
 
 private:
      JOYINFO joystickInfo;
@@ -138,12 +140,12 @@ private:
      int increment;
      int actualSpeed = 0;
      int maxSpeed = 300;
-     double Pdist, Pangle, rot;
+     double Pdist, Pangle;
      double distance_error, angle_error, diff;
      bool regulacia;
      int counter;
 
-     std::vector<float> bod;
+     std::vector<float> body;
      float bodX, bodY;
 
      double forwardspeed;//mm/s
