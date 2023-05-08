@@ -8,6 +8,7 @@
 #include <QImage>
 
 #include <QDir>
+#include <sstream>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow){
 
@@ -35,11 +36,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     Pdist = 500;
     Pangle = 15;
     positionCounter = 0;
-    previous = 0;
     bodX = 0;
     bodY = 0;
+    actualFrameCounter = 0;
     mission_counter = 0;
-    missionLogFile.open("missionlog.txt");
+//    missionLogFile.open("missionlog.txt");
 
     MainWindow::startup();
     MainWindow::insert_map();
@@ -79,6 +80,14 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
     if(actIndex > -1)
     {
+//        if (zahajenie){
+//            std::stringstream ss;
+//            ss << "D:/School/Ing/1st year/LS/HMI/Zadanie/Cizmar_Cservenka_HMI_2023/HMI_U2_github/demoRMR/frames/image_" << actualFrameCounter << ".jpg";
+//            std::string filename = ss.str();
+//            cv::imwrite(filename, frame[actIndex]);
+//            actualFrameCounter++;
+//        }
+
         //std::cout<<actIndex<<std::endl;
         QImage image = QImage((uchar*)frame[actIndex].data, frame[actIndex].cols, frame[actIndex].rows, frame[actIndex].step, QImage::Format_RGB888  );
         // kniznica eigen rotacne matice
@@ -128,8 +137,11 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 //        MainWindow::mapping();
 //    }
     if (zahajenie && regulacia){
+        frames.push_back(frame[actIndex]);
         MainWindow::regulation();
     }
+
+
 
     return 0;
 }
@@ -148,7 +160,6 @@ int MainWindow::processThisLidar(LaserMeasurement laserData)
 int MainWindow::processThisCamera(cv::Mat cameraData)
 {
     cameraData.copyTo(frame[(actIndex+1)%3]);
-    frames.push_back(frame[actIndex]);
     actIndex=(actIndex+1)%3;
     updateLaserPicture=1;
     return 0;
@@ -364,58 +375,51 @@ void MainWindow::missionExecuted()
 {
     MainWindow::on_pushButton_4_clicked(); // stop
     MainWindow::on_pushButton_14_clicked(); // Uloz mapu do txt
-    missionLogFile.close();
-    MainWindow::createVideo();
+//    missionLogFile.close();
+//    MainWindow::createVideo();
 
 }
 
 void MainWindow::createVideo()
 {
-    QString dirPath = "D:/School/Ing/1st year/LS/HMI/Zadanie/Cizmar_Cservenka_HMI_2023/HMI_U2_github/demoRMR/frames"; // Replace with your image directory path
+    QString dirPath =        "D:/School/Ing/1st year/LS/HMI/Zadanie/Cizmar_Cservenka_HMI_2023/HMI_U2_github/demoRMR/frames"; // Replace with your image directory path
     QString outputFilePath = "D:/School/Ing/1st year/LS/HMI/Zadanie/Cizmar_Cservenka_HMI_2023/HMI_U2_github/demoRMR/video.avi"; // Replace with your desired output video file path
 
     int width = 863; // Replace with your desired video frame width
     int height = 480; // Replace with your desired video frame height
 
-    // Write frames to images
-    QString fileNameFormat = "frame%1.jpg"; // Replace with your desired file name format
-    for (int i = 0; i < frames.size(); i++) {
-        QString filePath = dirPath + "/" + fileNameFormat.arg(i, 5, 10, QLatin1Char('0')); // Replace with your desired file path format
-        cv::imwrite(filePath.toStdString(), frames[i]);
+    // Read images from directory
+    QStringList filters;
+    filters << "*.jpg"; // Replace with the file extensions of your saved images
+    QDir dir(dirPath);
+    QStringList imagePaths = dir.entryList(filters, QDir::Files);
+    int numFrames = imagePaths.size();
+    std::vector<cv::Mat> video;
+    for (const QString& imagePath : imagePaths) {
+        QString filePath = dirPath + "/" + imagePath;
+        cv::Mat image = cv::imread(filePath.toStdString());
+        if (image.empty()) {
+            std::cout << "Could not read image" << std::endl;
+            return;
+        }
+        cv::resize(image, image, cv::Size(width, height)); // Resize image to desired video frame size
+        video.push_back(image);
     }
 
-//    // Read images from directory
-//    QStringList filters;
-//    filters << "*.jpg"; // Replace with the file extensions of your saved images
-//    QDir dir(dirPath);
-//    QStringList imagePaths = dir.entryList(filters, QDir::Files);
-//    int numFrames = imagePaths.size();
-//    std::vector<cv::Mat> video;
-//    for (const QString& imagePath : imagePaths) {
-//        QString filePath = dirPath + "/" + imagePath;
-//        cv::Mat image = cv::imread(filePath.toStdString());
-//        if (image.empty()) {
-//            std::cout << "Could not read image" << std::endl;
-//            return;
-//        }
-//        cv::resize(image, image, cv::Size(width, height)); // Resize image to desired video frame size
-//        video.push_back(image);
-//    }
+    // Create video writer
+    cv::VideoWriter videoWriter(outputFilePath.toStdString(), cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(width, height), true);
+    if (!videoWriter.isOpened()) {
+        std::cout << "Error opening video file for writing" << std::endl;
+        return;
+    }
 
-//    // Create video writer
-//    cv::VideoWriter videoWriter(outputFilePath.toStdString(), cv::VideoWriter::fourcc('M','J','P','G'), 30, cv::Size(width, height), true);
-//    if (!videoWriter.isOpened()) {
-//        std::cout << "Error opening video file for writing" << std::endl;
-//        return;
-//    }
+    // Write frames to video
+    for (int i = 0; i < video.size(); i++) {
+        videoWriter.write(video[i]);
+    }
 
-//    // Write frames to video
-//    for (int i = 0; i < video.size(); i++) {
-//        videoWriter.write(video[i]);
-//    }
-
-//    // Release video writer
-//    videoWriter.release();
+    // Release video writer
+    videoWriter.release();
     std::cout << " video ulozene " << std::endl;
 }
 

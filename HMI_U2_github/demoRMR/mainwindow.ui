@@ -90,14 +90,14 @@
          </size>
         </property>
         <property name="text">
-         <string>Uloz mapu do txt</string>
+         <string>Ukaz array</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="pushButton_15">
         <property name="text">
-         <string>Prechodovy bod</string>
+         <string>Prejazdovy bod</string>
         </property>
        </widget>
       </item>

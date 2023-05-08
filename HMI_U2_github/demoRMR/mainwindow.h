@@ -3,8 +3,8 @@
 
 #include <QMainWindow>
 #include <QTimer>
-#include<windows.h>
-#include<iostream>
+#include <windows.h>
+#include <iostream>
 //#include<arpa/inet.h>
 //#include<unistd.h>
 //#include<sys/socket.h>
@@ -55,8 +55,6 @@ public:
     int processThisRobot(TKobukiData robotdata);
 
     int processThisCamera(cv::Mat cameraData);
-
-
 
 private slots:
 
@@ -150,14 +148,14 @@ private:
      double Pdist, Pangle;
      double distance_error, angle_error, diff;
      bool regulacia;
-     int positionCounter, mission_counter;
+     int positionCounter, mission_counter, actualFrameCounter;
 
      std::vector<float> body;
      std::vector<cv::Mat> frames;
      float bodX, bodY;
      int previous;
 
-     ofstream missionLogFile;
+     //ofstream missionLogFile;
 
      double forwardspeed;//mm/s
      double rotationspeed;//omega/s
