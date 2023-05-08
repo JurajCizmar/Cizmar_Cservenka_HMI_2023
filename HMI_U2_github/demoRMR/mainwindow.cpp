@@ -7,6 +7,8 @@
 #include <QTimer>
 #include <QImage>
 
+#include <QDir>
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow){
 
     // tu je napevno nastavena ip. treba zmenit na to co ste si zadali do text boxu alebo nejaku inu pevnu. co bude spravna
@@ -32,9 +34,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     increment = 5;
     Pdist = 500;
     Pangle = 15;
-    counter = 0;
+    positionCounter = 0;
+    previous = 0;
     bodX = 0;
     bodY = 0;
+    mission_counter = 0;
+    missionLogFile.open("missionlog.txt");
 
     MainWindow::startup();
     MainWindow::insert_map();
@@ -68,7 +73,7 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
     painter.drawRect(rect);
 
-    QRect hlavicka(0, 0, 0.5*cellWidth, 1.75*cellHeight);
+    QRect hlavicka(0, 0, 0.5*cellHeight, 1.5*cellWidth);
 
 //    hlavicka.translate(int((x_pos*10*cellWidth) + (5 * cellWidth) + rect.topLeft().x()), int((41 * cellHeight) - (y_pos*10*cellHeight) + rect.topLeft().y())-20);
 
@@ -80,22 +85,20 @@ void MainWindow::paintEvent(QPaintEvent *event)
         for (int i = 0; i < ROWS; i++){
             for (int j = 0; j < COLS; j++){
 
-                if (boolMap[i][j] == true){
-                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()), int(cellWidth), int(cellHeight), QColor(255, 255, 0, 127));
-                }
-
                 if (finalMap[i][j] == 1){
-                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(0, 255, 0, 127));
+                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(0, 255, 0, 175));
 
                 } else if(finalMap[i][j] == 3){
-                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(0, 0, 255, 127));
+                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(0, 0, 255, 175));
 
                 } else if(finalMap[i][j] == 5){
-                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(255, 0, 0, 127));
+                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(255, 0, 0, 175));
 
-                } else if(finalMap[i][j] == 4){
-                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(255, 255, 255, 127));
+                } else if(finalMap[i][j] == 4) {
+                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(255, 255, 0, 175));
 
+                } else if (finalMap[i][j] == 8){
+                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()), int(cellWidth), int(cellHeight), QColor(255, 255, 255, 255));
                 }
             }
         }
@@ -121,9 +124,9 @@ int MainWindow::processThisRobot(TKobukiData robotdata)
 {
     MainWindow::getOdometry(robotdata);
 
-    if (mapovanie){
-        MainWindow::mapping();
-    }
+//    if (mapovanie){
+//        MainWindow::mapping();
+//    }
     if (zahajenie && regulacia){
         MainWindow::regulation();
     }
@@ -145,6 +148,7 @@ int MainWindow::processThisLidar(LaserMeasurement laserData)
 int MainWindow::processThisCamera(cv::Mat cameraData)
 {
     cameraData.copyTo(frame[(actIndex+1)%3]);
+    frames.push_back(frame[actIndex]);
     actIndex=(actIndex+1)%3;
     updateLaserPicture=1;
     return 0;
@@ -154,7 +158,7 @@ void MainWindow::startup() //start button
 {
     forwardspeed=0;
     rotationspeed=0;
-
+//    std::cout << "frames: " << frames.size() << std::endl;
     robot.setLaserParameters("127.0.0.1",52999,5299,/*[](LaserMeasurement dat)->int{std::cout<<"som z lambdy callback"<<std::endl;return 0;}*/std::bind(&MainWindow::processThisLidar,this,std::placeholders::_1));
     robot.setRobotParameters("127.0.0.1",53000,5300,std::bind(&MainWindow::processThisRobot,this,std::placeholders::_1));
     robot.setCameraParameters("http://127.0.0.1:8889/stream.mjpg",std::bind(&MainWindow::processThisCamera,this,std::placeholders::_1));
@@ -201,7 +205,6 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
             body.push_back((x-5)/10.0);
             body.push_back((41-y)/10.0);
 //            std::cout << " pushback: " << (x-5)/10.0 << " " << (41-y)/10.0 << std::endl;
-            std::cout << " ~~~~~~~~~~ AKTIVNY PRECHODOVY BOD ~~~~~~~~~~ " << std::endl;
 
         } else if(rect.contains(clickedPos.x(),clickedPos.y()) && misiaBod && finalMap[y][x] == 0){
             finalMap[y][x] = 4;
@@ -209,7 +212,6 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 
             body.push_back((x-5)/10.0);
             body.push_back((41-y)/10.0);
-            std::cout << " ~~~~~~~~~~ AKTIVNY BOD MISIE ~~~~~~~~~~ " << std::endl;
 //            std::cout << " pushback: " << (x-5)/10.0 << " " << (41-y)/10.0 << std::endl;
 
         } else if(rect.contains(clickedPos.x(),clickedPos.y()) && cielovyBod && finalMap[y][x] == 0){
@@ -218,7 +220,6 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 
             body.push_back((x-5)/10.0);
             body.push_back((41-y)/10.0);
-            std::cout << " ~~~~~~~~~~ AKTIVNY CIELOVY BOD ~~~~~~~~~~ " << std::endl;
 //            std::cout << " pushback: " << (x-5)/10.0 << " " << (41-y)/10.0 << std::endl;
         }
 
@@ -234,9 +235,9 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 
 void MainWindow::advance_to_next_point()
 {
-    bodX = body.at(counter);
-    bodY = body.at(counter+1);
-    counter += 2;
+    bodX = body.at(positionCounter*2);
+    bodY = body.at((positionCounter*2)+1);
+    positionCounter++;
 }
 
 void MainWindow::expandMapWithValue(int value)
@@ -257,7 +258,7 @@ void MainWindow::regulation()
     x = int((x_pos*10) + 5);
     y = int(41 -(y_pos*10));
 
-    boolMap[y][x] = true;
+    if (finalMap[y][x] == 0) finalMap[y][x] = 8;
 
     std::cout << "      som na: " << x << " " << y << std::endl;
     std::cout << " moja poloha: " << x_pos << " " << y_pos << std::endl;
@@ -287,8 +288,12 @@ void MainWindow::regulation()
 
     if (distance_error < 0.02 && finalMap[y][x] == 5) {
 
-        MainWindow::on_pushButton_4_clicked();
+        MainWindow::missionExecuted();
         std::cout << " !!! MISIA USPESNE VYKONANA !!!" << std::endl;
+
+    } else if (distance_error < 0.02 && finalMap[y][x] == 4) {
+
+        MainWindow::executeOrder();
 
     } else if (angle_error < -8 && distance_error >= 0.02){
 
@@ -300,11 +305,11 @@ void MainWindow::regulation()
 
     } else if (angle_error <= 8 && angle_error >= 4){
 
-        MainWindow::setRotation(rot);
+        MainWindow::setRotation(2*rot);
 
     } else if (angle_error >= -8 && angle_error <= -4){
 
-        MainWindow::setRotation(rot);
+        MainWindow::setRotation(2*rot);
 
     } else if(distance_error >= 0.02){
 
@@ -312,6 +317,19 @@ void MainWindow::regulation()
 
     } else if(distance_error < 0.02){
 
+        MainWindow::advance_to_next_point();
+    }
+}
+
+void MainWindow::executeOrder()
+{
+    std::cout << " !!! VYKONAVAM MISIU !!! " << std::endl;
+
+    if(mission_counter < 500){
+        MainWindow::setRotation(M_PI/4);
+        mission_counter++;
+
+    } else {
         MainWindow::advance_to_next_point();
     }
 }
@@ -340,6 +358,65 @@ void MainWindow::ramp()
         actualSpeed = maxSpeed;
         robot.setTranslationSpeed(maxSpeed);
     }
+}
+
+void MainWindow::missionExecuted()
+{
+    MainWindow::on_pushButton_4_clicked(); // stop
+    MainWindow::on_pushButton_14_clicked(); // Uloz mapu do txt
+    missionLogFile.close();
+    MainWindow::createVideo();
+
+}
+
+void MainWindow::createVideo()
+{
+    QString dirPath = "D:/School/Ing/1st year/LS/HMI/Zadanie/Cizmar_Cservenka_HMI_2023/HMI_U2_github/demoRMR/frames"; // Replace with your image directory path
+    QString outputFilePath = "D:/School/Ing/1st year/LS/HMI/Zadanie/Cizmar_Cservenka_HMI_2023/HMI_U2_github/demoRMR/video.avi"; // Replace with your desired output video file path
+
+    int width = 863; // Replace with your desired video frame width
+    int height = 480; // Replace with your desired video frame height
+
+    // Write frames to images
+    QString fileNameFormat = "frame%1.jpg"; // Replace with your desired file name format
+    for (int i = 0; i < frames.size(); i++) {
+        QString filePath = dirPath + "/" + fileNameFormat.arg(i, 5, 10, QLatin1Char('0')); // Replace with your desired file path format
+        cv::imwrite(filePath.toStdString(), frames[i]);
+    }
+
+//    // Read images from directory
+//    QStringList filters;
+//    filters << "*.jpg"; // Replace with the file extensions of your saved images
+//    QDir dir(dirPath);
+//    QStringList imagePaths = dir.entryList(filters, QDir::Files);
+//    int numFrames = imagePaths.size();
+//    std::vector<cv::Mat> video;
+//    for (const QString& imagePath : imagePaths) {
+//        QString filePath = dirPath + "/" + imagePath;
+//        cv::Mat image = cv::imread(filePath.toStdString());
+//        if (image.empty()) {
+//            std::cout << "Could not read image" << std::endl;
+//            return;
+//        }
+//        cv::resize(image, image, cv::Size(width, height)); // Resize image to desired video frame size
+//        video.push_back(image);
+//    }
+
+//    // Create video writer
+//    cv::VideoWriter videoWriter(outputFilePath.toStdString(), cv::VideoWriter::fourcc('M','J','P','G'), 30, cv::Size(width, height), true);
+//    if (!videoWriter.isOpened()) {
+//        std::cout << "Error opening video file for writing" << std::endl;
+//        return;
+//    }
+
+//    // Write frames to video
+//    for (int i = 0; i < video.size(); i++) {
+//        videoWriter.write(video[i]);
+//    }
+
+//    // Release video writer
+//    videoWriter.release();
+    std::cout << " video ulozene " << std::endl;
 }
 
 void MainWindow::getIndex()
@@ -482,47 +559,59 @@ void MainWindow::insert_map() // insert mapu
     infile.close();
 }
 
-void MainWindow::on_pushButton_14_clicked() // ukaz array
+void MainWindow::on_pushButton_14_clicked() // Uloz mapu do txt
 {
-    std::cout << " ~~~~ Ukaz Array ~~~~ " << std::endl;
-    ofstream outfile("test.txt");
+    std::cout << " ~~~~ Ukladam mapu ~~~~ " << std::endl;
+    ofstream outfile("maplog.txt");
     if(!outfile.is_open()){
-        std::cout << " nepodarilo sa otvorit test " << std::endl;
+        std::cout << " nepodarilo sa otvorit maplog " << std::endl;
 
     } else {
         for(int i = 0; i < ROWS; i++)
         {
             for(int j = 0; j < COLS; j++)
             {
-                outfile << finalMap[i][j];
+                if (finalMap[i][j] != 0){
+                    outfile << finalMap[i][j];
+                } else {
+                    outfile << ' ';
+                }
             }
             outfile << '\n';
         }
+        std::cout << " ~~~~ Mapa uspesne ulozena  ~~~~ " << std::endl;
     }
     outfile.close();
-
-    std::cout << " ~~~~ Ukazal som uspesne ~~~~ " << std::endl;
 }
 
 void MainWindow::on_pushButton_15_clicked() // Prechodovy bod
 {
-    cielovyBod = false;
-    misiaBod = false;
-    prechodovyBod = true;
+    if (!zahajenie){
+        cielovyBod = false;
+        misiaBod = false;
+        prechodovyBod = true;
+    }
+    std::cout << " ~~~~~~~~~~ AKTIVNY PRECHODOVY BOD ~~~~~~~~~~ " << std::endl;
 }
 
 void MainWindow::on_pushButton_16_clicked() // Misia bod
 {
-    cielovyBod = false;
-    misiaBod = true;
-    prechodovyBod = false;
+    if (!zahajenie){
+        cielovyBod = false;
+        misiaBod = true;
+        prechodovyBod = false;
+    }
+    std::cout << " ~~~~~~~~~~ AKTIVNY BOD MISIE ~~~~~~~~~~ " << std::endl;
 }
 
 void MainWindow::on_pushButton_18_clicked() // Cielovy bod
 {
-    cielovyBod = true;
-    misiaBod = false;
-    prechodovyBod = false;
+    if (!zahajenie){
+        cielovyBod = true;
+        misiaBod = false;
+        prechodovyBod = false;
+    }
+    std::cout << " ~~~~~~~~~~ AKTIVNY CIELOVY BOD ~~~~~~~~~~ " << std::endl;
 }
 
 void MainWindow::on_pushButton_17_clicked() // Zahajenie misie
@@ -532,4 +621,5 @@ void MainWindow::on_pushButton_17_clicked() // Zahajenie misie
     misiaBod = false;
     prechodovyBod = false;
     regulacia = true;
+    std::cout << " ~~~~~~~~~~ ZAHAJUJEM VYKONANIE MISIE ~~~~~~~~~~ " << std::endl;
 }

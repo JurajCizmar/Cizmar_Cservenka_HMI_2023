@@ -56,7 +56,6 @@ win32 {
     }
 }
 
-
 SOURCES += main.cpp\
         mainwindow.cpp
 

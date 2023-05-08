@@ -54,7 +54,9 @@ public:
 
     int processThisRobot(TKobukiData robotdata);
 
-int processThisCamera(cv::Mat cameraData);
+    int processThisCamera(cv::Mat cameraData);
+
+
 
 private slots:
 
@@ -96,6 +98,12 @@ private slots:
 
     void expandMapWithValue(int value);
 
+    void executeOrder();
+
+    void missionExecuted();
+
+    void createVideo();
+
 private:
      JOYINFO joystickInfo;
     Ui::MainWindow *ui;
@@ -128,7 +136,6 @@ private:
      int threshold;
      int map[120][120] = {{0}};
      int finalMap[ROWS][COLS] = {{0}};
-     bool boolMap[ROWS][COLS] = {{false}};
 
      int minimapSize;
      int x, y;
@@ -143,10 +150,14 @@ private:
      double Pdist, Pangle;
      double distance_error, angle_error, diff;
      bool regulacia;
-     int counter;
+     int positionCounter, mission_counter;
 
      std::vector<float> body;
+     std::vector<cv::Mat> frames;
      float bodX, bodY;
+     int previous;
+
+     ofstream missionLogFile;
 
      double forwardspeed;//mm/s
      double rotationspeed;//omega/s
