@@ -60,6 +60,8 @@ void MainWindow::paintEvent(QPaintEvent *event)
     pero.setWidth(3);
     pero.setColor(Qt::green);
     QRect geometry = ui->frame_2->geometry();
+    QFont font = painter.font();
+
     rect = ui->frame->geometry();
     rect.translate(0,15);
     miniMap = ui->frame_2->geometry();
@@ -71,6 +73,8 @@ void MainWindow::paintEvent(QPaintEvent *event)
     mapHeight = rect.bottomRight().y() - rect.topLeft().y();
     cellWidth = mapLength/COLS;
     cellHeight = mapHeight/ROWS;
+    font.setPixelSize(80);
+    painter.setFont(font);
 
     painter.drawRect(rect);
 
@@ -80,17 +84,17 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
     if(actIndex > -1)
     {
-//        if (zahajenie){
-//            std::stringstream ss;
-//            ss << "D:/School/Ing/1st year/LS/HMI/Zadanie/Cizmar_Cservenka_HMI_2023/HMI_U2_github/demoRMR/frames/image_" << actualFrameCounter << ".jpg";
-//            std::string filename = ss.str();
-//            cv::imwrite(filename, frame[actIndex]);
-//            actualFrameCounter++;
-//        }
+        if (zahajenie){
+            std::stringstream ss;
+            ss << "D:/School/Ing/1st year/LS/HMI/Zadanie/Cizmar_Cservenka_HMI_2023/HMI_U2_github/demoRMR/frames/image_" << actualFrameCounter << ".jpg";
+            std::string filename = ss.str();
+            cv::imwrite(filename, frame[actIndex]);
+            actualFrameCounter++;
+        }
 
         //std::cout<<actIndex<<std::endl;
         QImage image = QImage((uchar*)frame[actIndex].data, frame[actIndex].cols, frame[actIndex].rows, frame[actIndex].step, QImage::Format_RGB888  );
-        // kniznica eigen rotacne matice
+
         for (int i = 0; i < ROWS; i++){
             for (int j = 0; j < COLS; j++){
 
@@ -98,8 +102,12 @@ void MainWindow::paintEvent(QPaintEvent *event)
                     painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(0, 255, 0, 175));
 
                 } else if(finalMap[i][j] == 3){
-                    painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(0, 0, 255, 175));
-
+                    if (boolMap[i][j] == true){
+                        painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(255, 255, 255, 255));
+                    }
+                    else {
+                        painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(0, 0, 255, 175));
+                    }
                 } else if(finalMap[i][j] == 5){
                     painter.fillRect(int((j*cellWidth)+rect.topLeft().x()), int((i*cellHeight)+rect.topLeft().y()),int(cellWidth), int(cellHeight), QColor(255, 0, 0, 175));
 
@@ -118,6 +126,27 @@ void MainWindow::paintEvent(QPaintEvent *event)
         painter.setPen(pero);
         painter.drawEllipse(int((x_pos*10*cellWidth) + (5 * cellWidth) + rect.topLeft().x())-(1.75*cellWidth), int((41 * cellHeight) - (y_pos*10*cellHeight) + rect.topLeft().y())-(1.75*cellHeight), 3.5*cellWidth, 3.5*cellHeight);
         painter.drawImage(miniMap, image.rgbSwapped());
+
+        for(int k = 0; k < copyOfLaserData.numberOfScans/*360*/; k++)
+        {
+            int D = copyOfLaserData.Data[k].scanDistance - 175;
+            if (!alarm && D < 50) alarm = true;
+        }
+
+        if (alarm){
+            showTextString = "! MISIA !\n! ZLYHALA !";
+            MainWindow::paintTextOnScreen(&painter, &rect);
+            MainWindow::on_pushButton_4_clicked();
+
+        } else if (executingMission){
+            showTextString = "VYKONAVAM\nMISIU";
+            MainWindow::paintTextOnScreen(&painter, &rect);
+
+        } else if (boolMissionExecuted){
+            showTextString = "! MISIA ! \n! SPLNENA !";
+            MainWindow::paintTextOnScreen(&painter, &rect);
+        }
+
 
         QPoint pointik = hlavicka.center();
         pointik.setX(int((x_pos*10*cellWidth) + (5 * cellWidth) + rect.topLeft().x()));
@@ -246,6 +275,15 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 
 void MainWindow::advance_to_next_point()
 {
+    if (boolMap[y][x] == false)        boolMap[y+1][x] = true;
+    if (boolMap[y+1][x] == false)      boolMap[y+1][x] = true;
+    if (boolMap[y-1][x] == false)      boolMap[y-1][x] = true;
+    if (boolMap[y][x+1] == false)      boolMap[y][x+1] = true;
+    if (boolMap[y][x-1] == false)      boolMap[y][x-1] = true;
+    if (boolMap[y-1][x-1] == false)    boolMap[y-1][x-1] = true;
+    if (boolMap[y+1][x+1] == false)    boolMap[y+1][x+1] = true;
+    if (boolMap[y-1][x+1] == false)    boolMap[y-1][x+1] = true;
+    if (boolMap[y+1][x-1] == false)    boolMap[y+1][x-1] = true;
     bodX = body.at(positionCounter*2);
     bodY = body.at((positionCounter*2)+1);
     positionCounter++;
@@ -269,7 +307,7 @@ void MainWindow::regulation()
     x = int((x_pos*10) + 5);
     y = int(41 -(y_pos*10));
 
-    if (finalMap[y][x] == 0) finalMap[y][x] = 8;
+    if (finalMap[y][x] == 0 || finalMap[y][x] == 3 ) finalMap[y][x] = 8;
 
     std::cout << "      som na: " << x << " " << y << std::endl;
     std::cout << " moja poloha: " << x_pos << " " << y_pos << std::endl;
@@ -334,13 +372,14 @@ void MainWindow::regulation()
 
 void MainWindow::executeOrder()
 {
-    std::cout << " !!! VYKONAVAM MISIU !!! " << std::endl;
 
     if(mission_counter < 500){
+        executingMission = true;
         MainWindow::setRotation(M_PI/4);
         mission_counter++;
 
     } else {
+        executingMission = false;
         MainWindow::advance_to_next_point();
     }
 }
@@ -375,9 +414,9 @@ void MainWindow::missionExecuted()
 {
     MainWindow::on_pushButton_4_clicked(); // stop
     MainWindow::on_pushButton_14_clicked(); // Uloz mapu do txt
+    boolMissionExecuted = true;
 //    missionLogFile.close();
-//    MainWindow::createVideo();
-
+    MainWindow::createVideo();
 }
 
 void MainWindow::createVideo()
@@ -407,7 +446,7 @@ void MainWindow::createVideo()
     }
 
     // Create video writer
-    cv::VideoWriter videoWriter(outputFilePath.toStdString(), cv::VideoWriter::fourcc('M','J','P','G'), 10, cv::Size(width, height), true);
+    cv::VideoWriter videoWriter(outputFilePath.toStdString(), cv::VideoWriter::fourcc('M','J','P','G'), 5, cv::Size(width, height), true);
     if (!videoWriter.isOpened()) {
         std::cout << "Error opening video file for writing" << std::endl;
         return;
@@ -625,5 +664,28 @@ void MainWindow::on_pushButton_17_clicked() // Zahajenie misie
     misiaBod = false;
     prechodovyBod = false;
     regulacia = true;
-    std::cout << " ~~~~~~~~~~ ZAHAJUJEM VYKONANIE MISIE ~~~~~~~~~~ " << std::endl;
+    if (!alarm ) {
+        std::cout << " ~~~~~~~~~~ ZAHAJUJEM VYKONANIE MISIE ~~~~~~~~~~ " << std::endl;
+    }
 }
+
+void MainWindow::paintTextOnScreen(QPainter* painter, QRect *rect){
+
+    QRect alarmRect(0, 0, rect->bottomRight().x()-200, rect->bottomRight().y()-200);
+    alarmRect.translate((rect->bottomRight().x()/2)-(rect->bottomRight().x()/3), (rect->bottomRight().y()/2 - (rect->bottomRight().y()/6)) );
+    painter->fillRect(rect->topLeft().x()+100, rect->topLeft().y()+100, rect->bottomRight().x()-200, rect->bottomRight().y()-300, QColor(192, 192, 192, 175));
+    painter->drawText(alarmRect, Qt::TextWordWrap, showTextString);
+}
+
+void MainWindow::on_Preplanovat_clicked() // preplanovat
+{
+
+
+
+
+
+
+
+
+}
+

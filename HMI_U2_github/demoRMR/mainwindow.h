@@ -102,6 +102,10 @@ private slots:
 
     void createVideo();
 
+    void paintTextOnScreen(QPainter* painter, QRect *rect);
+
+    void on_Preplanovat_clicked();
+
 private:
      JOYINFO joystickInfo;
     Ui::MainWindow *ui;
@@ -134,6 +138,7 @@ private:
      int threshold;
      int map[120][120] = {{0}};
      int finalMap[ROWS][COLS] = {{0}};
+     bool boolMap[ROWS][COLS] = {{false}};
 
      int minimapSize;
      int x, y;
@@ -154,6 +159,11 @@ private:
      std::vector<cv::Mat> frames;
      float bodX, bodY;
      int previous;
+
+     QString showTextString = "";
+     bool alarm = false;
+     bool executingMission = false;
+     bool boolMissionExecuted = false;
 
      //ofstream missionLogFile;
 
